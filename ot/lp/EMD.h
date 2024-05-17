@@ -29,7 +29,7 @@ enum ProblemType {
     MAX_ITER_REACHED
 };
 
-int EMD_wrap(int n1,int n2, double *X, double *Y,double *D, double *G, double* alpha, double* beta, double *cost, uint64_t maxIter);
+int EMD_wrap(int supply_count,int demand_count, double *supply_weights, double *demand_weights,double *distance_matrix, double *flow_matrix, double* alpha, double* beta, double *cost, uint64_t maxIter);
 int EMD_wrap_omp(int n1,int n2, double *X, double *Y,double *D, double *G, double* alpha, double* beta, double *cost, uint64_t maxIter, int numThreads);
 
 
