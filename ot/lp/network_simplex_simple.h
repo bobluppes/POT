@@ -65,6 +65,7 @@
 
 //#include "sparse_array_n.h"
 #include "full_bipartitegraph.h"
+#include "cost_matrix.h"
 
 #undef INVALIDNODE
 #undef INVALID
@@ -233,9 +234,9 @@ namespace lemon {
         /// mixed order in the internal data structure.
         /// In special cases, it could lead to better overall performance,
         /// but it is usually slower. Therefore it is disabled by default.
-        NetworkSimplexSimple(const GR& graph, bool arc_mixing, int nbnodes, ArcsType nb_arcs, uint64_t maxiters) :
+        NetworkSimplexSimple(const GR& graph, bool arc_mixing, int nbnodes, ArcsType nb_arcs, emd::cost_matrix<C, int>& cost_matrix, uint64_t maxiters) :
         _graph(graph),  //_arc_id(graph),
-        _arc_mixing(arc_mixing), _init_nb_nodes(nbnodes), _init_nb_arcs(nb_arcs),
+        _arc_mixing(arc_mixing), _cost{cost_matrix}, _init_nb_nodes(nbnodes), _init_nb_arcs(nb_arcs),
         MAX(std::numeric_limits<Value>::max()),
         INF(std::numeric_limits<Value>::has_infinity ?
             std::numeric_limits<Value>::infinity() : MAX)
@@ -336,7 +337,7 @@ namespace lemon {
         bool _arc_mixing;
     public:
         // Node and arc data
-        CostVector _cost;
+        emd::cost_matrix<Cost, int>& _cost;
         ValueVector _supply;
         ValueVector _flow;
         //SparseValueVector<Value> _flow;
@@ -443,7 +444,7 @@ namespace lemon {
             // References to the NetworkSimplexSimple class
             const IntVector  &_source;
             const IntVector  &_target;
-            const CostVector &_cost;
+            emd::cost_matrix<Cost, int> &_cost;
             const StateVector &_state;
             const CostVector &_pi;
             ArcsType &_in_arc;
@@ -527,43 +528,6 @@ namespace lemon {
         /// functions.
 
         /// @{
-
-
-        /// \brief Set the costs of the arcs.
-        ///
-        /// This function sets the costs of the arcs.
-        /// If it is not used before calling \ref run(), the costs
-        /// will be set to \c 1 on all arcs.
-        ///
-        /// \param map An arc map storing the costs.
-        /// Its \c Value type must be convertible to the \c Cost type
-        /// of the algorithm.
-        ///
-        /// \return <tt>(*this)</tt>
-        template<typename CostMap>
-        NetworkSimplexSimple& costMap(const CostMap& map) {
-            Arc a; _graph.first(a);
-            for (; a != INVALID; _graph.next(a)) {
-                _cost[getArcID(a)] = map[a];
-            }
-            return *this;
-        }
-
-
-        /// \brief Set the costs of one arc.
-        ///
-        /// This function sets the costs of one arcs.
-        /// Done for memory reasons
-        ///
-        /// \param arc An arc.
-        /// \param arc A cost
-        ///
-        /// \return <tt>(*this)</tt>
-        template<typename Value>
-        NetworkSimplexSimple& setCost(const Arc& arc, const Value cost) {
-            _cost[getArcID(arc)] = cost;
-            return *this;
-        }
 
 
         /// \brief Set the supply values of the nodes.
@@ -739,9 +703,6 @@ namespace lemon {
         NetworkSimplexSimple& resetParams() {
             for (int i = 0; i != _node_num; ++i) {
                 _supply[i] = 0;
-            }
-            for (ArcsType i = 0; i != _arc_num; ++i) {
-                _cost[i] = 1;
             }
             _stype = GEQ;
             return *this;
