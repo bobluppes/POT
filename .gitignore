@@ -117,8 +117,9 @@ docs/source/_build/*
 # local debug folder
 debug
 
-# vscode parameters
+# IDE config
 .vscode
+.idea
 
 # pytest cahche
 .pytest_cache
