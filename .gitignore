@@ -123,3 +123,4 @@ debug
 
 # pytest cahche
 .pytest_cache
+ot/lp/cmake-build-debug/
