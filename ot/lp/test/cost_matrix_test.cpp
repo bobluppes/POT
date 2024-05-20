@@ -2,6 +2,7 @@
 
 #include "../cost_matrix.h"
 
+#include <algorithm>
 #include <numeric>
 #include <utility>
 #include <vector>
@@ -72,38 +73,70 @@ TEST_F(CostMatrixResizeTest, ResizeToLargerValue) {
     EXPECT_EQ(larger_size, cost.size());
 }
 
-TEST(CostMatrixTest, NotRetainingAllNodes) {
-    // GIVEN
-    std::vector<int> source_nodes{1, 0, 1};
-    std::vector<int> demand_nodes{0, 1, 1};
+class CostMatrixDataTest : public testing::Test {
+protected:
+    std::vector<int> source_nodes{1, 1, 1};
+    std::vector<int> demand_nodes{1, 1, 1};
 
-    const auto source_count{source_nodes.size()};
-    const auto demand_count{demand_nodes.size()};
+    const std::size_t source_count{source_nodes.size()};
+    const std::size_t demand_count{demand_nodes.size()};
 
-    const auto source_mapping{compute_retained_nodes(source_nodes)};
-    const auto retained_source_count{source_mapping.size()};
-
-    const auto demand_mapping{compute_retained_nodes(demand_nodes)};
-    const auto retained_demand_count{demand_mapping.size()};
+    [[nodiscard]] std::vector<std::size_t> get_source_mapping() { return compute_retained_nodes(source_nodes); }
+    [[nodiscard]] std::vector<std::size_t> get_demand_mapping() { return compute_retained_nodes(demand_nodes); }
 
     // Distance matrix:
     // 1, 2, 3
     // 4, 5, 6
     // 7, 8, 9
     std::vector<int> distance{1, 2, 3, 4, 5, 6, 7, 8, 9};
+};
 
-    cost_matrix<int, std::size_t> cost_matrix{distance.data(), source_count, demand_count, retained_source_count, retained_demand_count, source_mapping, demand_mapping};
+TEST_F(CostMatrixDataTest, AllNodesAreRetained) {
+    // GIVEN: a cost matrix
+    const auto source_mapping{get_source_mapping()};
+    const auto demand_mapping{get_demand_mapping()};
+    
+    cost_matrix<int, std::size_t> cost_matrix{distance.data(), source_count, demand_count,
+                                              source_mapping.size(), demand_mapping.size(),
+                                              source_mapping, demand_mapping};
 
-    // WHEN - THEN
+    // WHEN: we access all elements in the cost matrix
+    std::vector<int> result{};
+    for (int i{0}; i < cost_matrix.size(); ++i) {
+        result.emplace_back(cost_matrix[i]);
+    }
+
+    // THEN: we expect to find all values in the distance matrix
+    EXPECT_EQ(distance, result);
+}
+
+TEST_F(CostMatrixDataTest, NotAllNodesAreRetained) {
+    // GIVEN: source and demand nodes with a 0 contribution
+    source_nodes[1] = 0;
+    demand_nodes[0] = 0;
+
+    const auto source_mapping{get_source_mapping()};
+    const auto demand_mapping{get_demand_mapping()};
+
+    cost_matrix<int, std::size_t> cost_matrix{distance.data(), source_count, demand_count,
+                                              source_mapping.size(), demand_mapping.size(),
+                                              source_mapping, demand_mapping};
+
+    // Retained distances:
     // 2, 3
     // 8, 9
     const std::vector<int> expected_retained_distances{2, 3, 8, 9};
 
-    int i{0};
-    for (const auto expected : expected_retained_distances) {
-        const auto val{cost_matrix[i++]};
-        EXPECT_EQ(expected, val);
+    // WHEN: we access all elements in the cost matrix
+    std::vector<int> result{};
+    for (int i{0}; i < cost_matrix.size(); ++i) {
+        result.emplace_back(cost_matrix[i]);
     }
+
+    // THEN
+    EXPECT_EQ(expected_retained_distances, result);
 }
+
+
 
 }
