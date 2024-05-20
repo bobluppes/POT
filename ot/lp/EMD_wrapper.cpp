@@ -27,7 +27,7 @@ int EMD_wrap(int supply_count, int demand_count, double *supply_weights,
     // beware M and C are stored in row major C style!!!
 
     using namespace lemon;
-    uint64_t retained_supply_nodes, retained_demand_nodes, cur;
+    node_id_type retained_supply_nodes, retained_demand_nodes, cur;
 
     typedef FullBipartiteDigraph Digraph;
     DIGRAPH_TYPEDEFS(Digraph);
@@ -36,7 +36,7 @@ int EMD_wrap(int supply_count, int demand_count, double *supply_weights,
     retained_supply_nodes =0;
     for (int i=0; i< supply_count; i++) {
         double val=*(supply_weights +i);
-        if (val>=0) {   // TODO: do not retain 0 values
+        if (val>0) {
           retained_supply_nodes++;
         }else if(val<0){
 			return INFEASIBLE;
@@ -45,29 +45,24 @@ int EMD_wrap(int supply_count, int demand_count, double *supply_weights,
     retained_demand_nodes =0;
     for (int i=0; i< demand_count; i++) {
         double val=*(demand_weights +i);
-        if (val>=0) {   // TODO: do not retain 0 values
+        if (val>0) {
           retained_demand_nodes++;
         }else if(val<0){
 			return INFEASIBLE;
 		}
     }
 
-    // Define the graph
-
-    std::vector<uint64_t> indI(retained_supply_nodes), indJ(retained_demand_nodes);
-    std::vector<double> weights1(retained_supply_nodes), weights2(retained_demand_nodes);
-    Digraph di(retained_supply_nodes, retained_demand_nodes);
-    emd::cost_matrix<double, int> cost_matrix{distance_matrix, supply_count * demand_count};
-    NetworkSimplexSimple<Digraph,double,double, node_id_type> net(di, true, (int) (retained_supply_nodes + retained_demand_nodes), retained_supply_nodes * retained_demand_nodes, cost_matrix, maxIter);
-
     // Set supply and demand, don't account for 0 values (faster)
+    std::vector<node_id_type> retained_supply_node_to_node_mapping(retained_supply_nodes);
+    std::vector<node_id_type> retained_demand_node_to_node_mapping(retained_demand_nodes);
+    std::vector<double> weights1(retained_supply_nodes), weights2(retained_demand_nodes);
 
     cur=0;
     for (uint64_t i=0; i< supply_count; i++) {
         double val=*(supply_weights +i);
         if (val>0) {
             weights1[ cur ] = val;
-            indI[cur++]=i;
+            retained_supply_node_to_node_mapping[cur++]=i;
         }
     }
 
@@ -78,9 +73,14 @@ int EMD_wrap(int supply_count, int demand_count, double *supply_weights,
         double val=*(demand_weights +i);
         if (val>0) {
             weights2[ cur ] = -val;
-            indJ[cur++]=i;
+            retained_demand_node_to_node_mapping[cur++]=i;
         }
     }
+
+    // Define the graph
+    Digraph di(retained_supply_nodes, retained_demand_nodes);
+    emd::cost_matrix<double, node_id_type> cost_matrix{distance_matrix, (node_id_type) supply_count, (node_id_type) demand_count, retained_supply_nodes, retained_demand_nodes, retained_supply_node_to_node_mapping, retained_demand_node_to_node_mapping};
+    NetworkSimplexSimple<Digraph,double,double, node_id_type> net(di, true, (int) (retained_supply_nodes + retained_demand_nodes), retained_supply_nodes * retained_demand_nodes, cost_matrix, maxIter);
 
 
     net.supplyMap(&weights1[0], (int)retained_supply_nodes, &weights2[0], (int)retained_demand_nodes);
@@ -97,10 +97,10 @@ int EMD_wrap(int supply_count, int demand_count, double *supply_weights,
             i = di.source(a);
             j = di.target(a);
             double flow = net.flow(a);
-            *cost += flow * (*(distance_matrix +indI[i]* demand_count +indJ[j- retained_supply_nodes]));
-            *(flow_matrix +indI[i]* demand_count +indJ[j- retained_supply_nodes]) = flow;
-            *(alpha + indI[i]) = -net.potential(i);
-            *(beta + indJ[j- retained_supply_nodes]) = net.potential(j);
+            *cost += flow * (*(distance_matrix + retained_supply_node_to_node_mapping[i] * demand_count + retained_demand_node_to_node_mapping[j - retained_supply_nodes]));
+            *(flow_matrix + retained_supply_node_to_node_mapping[i] * demand_count + retained_demand_node_to_node_mapping[j - retained_supply_nodes]) = flow;
+            *(alpha + retained_supply_node_to_node_mapping[i]) = -net.potential(i);
+            *(beta + retained_demand_node_to_node_mapping[j - retained_supply_nodes]) = net.potential(j);
         }
 
     }

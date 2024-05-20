@@ -12,6 +12,7 @@ FetchContent_MakeAvailable(googletest)
 add_executable(
         ${PROJECT_NAME}_test
         emd_wrap_test.cpp
+        cost_matrix_test.cpp
 )
 
 target_link_libraries(

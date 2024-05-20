@@ -234,7 +234,7 @@ namespace lemon {
         /// mixed order in the internal data structure.
         /// In special cases, it could lead to better overall performance,
         /// but it is usually slower. Therefore it is disabled by default.
-        NetworkSimplexSimple(const GR& graph, bool arc_mixing, int nbnodes, ArcsType nb_arcs, emd::cost_matrix<C, int>& cost_matrix, uint64_t maxiters) :
+        NetworkSimplexSimple(const GR& graph, bool arc_mixing, int nbnodes, ArcsType nb_arcs, emd::cost_matrix<C, NodesType>& cost_matrix, uint64_t maxiters) :
         _graph(graph),  //_arc_id(graph),
         _arc_mixing(arc_mixing), _cost{cost_matrix}, _init_nb_nodes(nbnodes), _init_nb_arcs(nb_arcs),
         MAX(std::numeric_limits<Value>::max()),
@@ -337,7 +337,7 @@ namespace lemon {
         bool _arc_mixing;
     public:
         // Node and arc data
-        emd::cost_matrix<Cost, int>& _cost;
+        emd::cost_matrix<Cost, NodesType>& _cost;
         ValueVector _supply;
         ValueVector _flow;
         //SparseValueVector<Value> _flow;
@@ -444,7 +444,7 @@ namespace lemon {
             // References to the NetworkSimplexSimple class
             const IntVector  &_source;
             const IntVector  &_target;
-            emd::cost_matrix<Cost, int> &_cost;
+            emd::cost_matrix<Cost, NodesType> &_cost;
             const StateVector &_state;
             const CostVector &_pi;
             ArcsType &_in_arc;
